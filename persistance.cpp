@@ -145,6 +145,13 @@ void Persistance::commit(qint64 transaction_id)
         return;
     }
 
+    if(_transactions[transaction_id].empty())
+    {
+        // Do not write a log file if no data has been written
+        _transactions.remove(transaction_id);
+        return;
+    }
+
     bool persist_pages = _buffer.size() > MAX_DATASETS;
 
     QFile log_file(QString("./log/%1").arg(_lognr));
