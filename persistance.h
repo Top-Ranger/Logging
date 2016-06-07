@@ -30,13 +30,11 @@ public:
     struct page
     {
         QString data;
-        qint64 transactions;
         qint64 lognr;
         QHash<qint64, QString> write_buffer;
 
         page() :
             data(),
-            transactions(0),
             lognr(0),
             write_buffer()
         {
@@ -53,6 +51,7 @@ public:
 private:
     void load_dataset(qint64 page_id);
     void increase_log_number();
+    void flush_buffer();
 
     static QReadWriteLock *_rwlock;
     static QHash<qint64, page> _buffer;

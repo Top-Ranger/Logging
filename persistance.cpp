@@ -108,7 +108,6 @@ void Persistance::write(qint64 transaction_id, qint64 page_id, QString data)
     _buffer[page_id].write_buffer[transaction_id] = data;
     if(!_transactions[transaction_id].contains(page_id))
     {
-        _buffer[page_id].transactions += 1;
         _transactions[transaction_id].append(page_id);
     }
 }
@@ -132,7 +131,7 @@ QString Persistance::read(qint64 transaction_id, qint64 page_id)
         return _buffer[page_id].write_buffer[transaction_id];
     }
 
-     return _buffer[page_id].data;
+    return _buffer[page_id].data;
 }
 
 void Persistance::commit(qint64 transaction_id)
@@ -149,10 +148,9 @@ void Persistance::commit(qint64 transaction_id)
     {
         // Do not write a log file if no data has been written
         _transactions.remove(transaction_id);
+        flush_buffer();
         return;
     }
-
-    bool persist_pages = _buffer.size() > MAX_DATASETS;
 
     QFile log_file(QString("./log/%1").arg(_lognr));
     log_file.open(QIODevice::WriteOnly);
@@ -162,21 +160,14 @@ void Persistance::commit(qint64 transaction_id)
     foreach (qint64 page_id, _transactions[transaction_id])
     {
         _buffer[page_id].data = _buffer[page_id].write_buffer[transaction_id];
-         _buffer[page_id].write_buffer.remove(transaction_id);
+        _buffer[page_id].write_buffer.remove(transaction_id);
         log_stream << _buffer[page_id];
-        --_buffer[page_id].transactions;
-        if(persist_pages && _buffer[page_id].transactions == 0)
-        {
-            QFile page_file(QString("./pages/%1").arg(page_id));
-            page_file.open(QIODevice::WriteOnly);
-            QDataStream page_stream(&page_file);
-            _buffer[page_id].lognr = _lognr;
-            page_stream << _buffer[page_id];
-            _buffer.remove(page_id);
-            page_file.close();
-        }
     }
+
     log_file.close();
+
+    flush_buffer();
+
     increase_log_number();
     _transactions.remove(transaction_id);
 }
@@ -197,6 +188,8 @@ void Persistance::rollback(qint64 transaction_id)
     }
 
     _transactions.remove(transaction_id);
+
+    flush_buffer();
 }
 
 void Persistance::load_dataset(qint64 page_id)
@@ -255,4 +248,26 @@ void Persistance::increase_log_number()
     QFile::remove("./log/last_log.dat");
     QFile::rename("./log/last_log.dat.prepare", "./log/last_log.dat");
     QFile::remove("./log/last_log.dat.prepare");
+}
+
+void Persistance::flush_buffer()
+{
+    if(_buffer.size() > MAX_DATASETS)
+    {
+        qDebug() << Q_FUNC_INFO << "Pages before flush:" << _buffer.size();
+        foreach(qint64 page_id, _buffer.keys())
+        {
+            if(_buffer[page_id].write_buffer.size() == 0)
+            {
+                QFile page_file(QString("./pages/%1").arg(page_id));
+                page_file.open(QIODevice::WriteOnly);
+                QDataStream page_stream(&page_file);
+                _buffer[page_id].lognr = _lognr;
+                page_stream << _buffer[page_id];
+                _buffer.remove(page_id);
+                page_file.close();
+            }
+        }
+        qDebug() << Q_FUNC_INFO << "Pages after flush:" << _buffer.size();
+    }
 }
