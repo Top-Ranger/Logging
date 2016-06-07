@@ -15,9 +15,9 @@ After you end one transaction, you have to start a new one before you can access
 ## Log
 
 The log consists of three phases:
-1. Temporary memory. This consists of pages not yet committed and will be lost on application termination
-2. Permanent data not written to page files. This data is located in "./log/" and has to be read from the latest logs to get the latest version.
-3. Permanent data written to page file. These files can be found at "./pages/". They may not contain the latest data but only a snapshot at one point in time. This is to speed up the reconstruction from the "./log/" files
+* Temporary memory. This consists of pages not yet committed and will be lost on application termination
+* Permanent data not written to page files. This data is located in "./log/" and has to be read from the latest logs to get the latest version.
+* Permanent data written to page file. These files can be found at "./pages/". They may not contain the latest data but only a snapshot at one point in time. This is to speed up the reconstruction from the "./log/" files
 
 ## Paths
 
