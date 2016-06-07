@@ -24,3 +24,13 @@ The log consists of three phases:
 All paths are relative to your current paths
 * "./log/" contains all log files enumerated from 0 to the latest file. "last_log.dat" always contains the number of the latest log file.
 * "./pages/" contain the page files which were written. Even if no file exists for a page, the page might have been stored in the logs (in this case, you have to traverse through all log files in chronological order).
+
+## License
+
+Copyright (C) 2016 Marcus Soll
+
+Logger is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+Logger is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with Logger. If not, see <http://www.gnu.org/licenses/>.
