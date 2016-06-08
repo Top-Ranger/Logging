@@ -1,6 +1,6 @@
 #Logging
 
-A very simple program written in Qt to demonstrate how logging changes to items kept in buffer could be implemented.
+A very simple program written in Qt to demonstrate how logging changes to items (as for example used by databases) kept in buffer could be implemented.
 
 ## Transaction
 
