@@ -269,46 +269,57 @@ void Persistance::load_dataset(qint64 page_id)
         page_stream >> new_page;
         f.close();
         last_log = new_page.lognr;
-    }
 
-    for(; last_log < _lognr; ++last_log)
-    {
-        if(QFile::exists(QString("./log/%1").arg(last_log)))
+        for(; last_log < _lognr; ++last_log)
         {
-            QFile f(QString("./log/%1").arg(last_log));
-            f.open(QIODevice::ReadOnly);
-            QDataStream s(&f);
-            s.setVersion(DATASTREAM_VERSION);
-            QList<qint64> saved_pages;
-            s >> saved_pages;
-            if(saved_pages.contains(page_id))
+            if(QFile::exists(QString("./log/%1").arg(last_log)))
             {
-                while(!s.atEnd())
+                QFile f(QString("./log/%1").arg(last_log));
+                f.open(QIODevice::ReadOnly);
+                QDataStream s(&f);
+                s.setVersion(DATASTREAM_VERSION);
+                QList<qint64> saved_pages;
+                s >> saved_pages;
+                if(saved_pages.contains(page_id))
                 {
-                    QHash<QString, QVariant> writes;
-                    QSet<QString> deletes;
-                    s >> writes >> deletes;
-                    if(saved_pages.first() == page_id)
+                    while(!s.atEnd())
                     {
-                        foreach (QString key, writes.keys())
+                        QHash<QString, QVariant> writes;
+                        QSet<QString> deletes;
+                        s >> writes >> deletes;
+                        if(saved_pages.first() == page_id)
                         {
-                            new_page.data[key] = writes[key];
-                        }
+                            foreach (QString key, writes.keys())
+                            {
+                                new_page.data[key] = writes[key];
+                            }
 
-                        foreach (QString key, deletes)
-                        {
-                            new_page.data.remove(key);
+                            foreach (QString key, deletes)
+                            {
+                                new_page.data.remove(key);
+                            }
                         }
+                        saved_pages.removeFirst();
                     }
-                    saved_pages.removeFirst();
                 }
+                f.close();
             }
-            f.close();
+            else
+            {
+                qWarning() << Q_FUNC_INFO << "Missing log" << last_log;
+            }
         }
-        else
-        {
-            qWarning() << Q_FUNC_INFO << "Missing log" << last_log;
-        }
+    }
+    else
+    {
+        // Directly save newly created page - this way we do not need to traverse all logs to search for lost pages
+        new_page.lognr = _lognr;
+        QFile page_file(QString("./pages/%1").arg(page_id));
+        page_file.open(QIODevice::WriteOnly);
+        QDataStream page_stream(&page_file);
+        page_stream.setVersion(DATASTREAM_VERSION);
+        page_stream << new_page;
+        page_file.close();
     }
 
     _buffer[page_id] = new_page;
