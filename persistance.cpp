@@ -41,6 +41,7 @@ Persistance::Persistance()
             QFile f("./log/last_log.dat");
             f.open(QIODevice::ReadOnly);
             QDataStream s(&f);
+            s.setVersion(DATASTREAM_VERSION);
             s >> _lognr;
             qDebug() << Q_FUNC_INFO << "Last log id" << _lognr;
             f.close();
@@ -51,6 +52,7 @@ Persistance::Persistance()
             QFile f("./log/last_log.dat.prepare");
             f.open(QIODevice::ReadOnly);
             QDataStream s(&f);
+            s.setVersion(DATASTREAM_VERSION);
             s >> _lognr;
             qDebug() << Q_FUNC_INFO << "Last log id" << _lognr;
             f.close();
@@ -64,6 +66,7 @@ Persistance::Persistance()
             QFile f("./log/last_log.dat");
             f.open(QIODevice::WriteOnly);
             QDataStream s(&f);
+            s.setVersion(DATASTREAM_VERSION);
             s << 0;
             _lognr = 0;
         }
@@ -155,6 +158,7 @@ void Persistance::commit(qint64 transaction_id)
     QFile log_file(QString("./log/%1").arg(_lognr));
     log_file.open(QIODevice::WriteOnly);
     QDataStream log_stream(&log_file);
+    log_stream.setVersion(DATASTREAM_VERSION);
     log_stream << _transactions[transaction_id];
 
     foreach (qint64 page_id, _transactions[transaction_id])
@@ -202,6 +206,7 @@ void Persistance::load_dataset(qint64 page_id)
         QFile f(QString("./pages/%1").arg(page_id));
         f.open(QIODevice::ReadOnly);
         QDataStream page_stream(&f);
+        page_stream.setVersion(DATASTREAM_VERSION);
         page_stream >> new_page;
         f.close();
         last_log = new_page.lognr;
@@ -214,6 +219,7 @@ void Persistance::load_dataset(qint64 page_id)
             QFile f(QString("./log/%1").arg(last_log));
             f.open(QIODevice::ReadOnly);
             QDataStream s(&f);
+            s.setVersion(DATASTREAM_VERSION);
             QList<qint64> saved_pages;
             s >> saved_pages;
             if(saved_pages.contains(page_id))
@@ -243,6 +249,7 @@ void Persistance::increase_log_number()
     QFile f("./log/last_log.dat.prepare");
     f.open(QIODevice::WriteOnly);
     QDataStream s(&f);
+    s.setVersion(DATASTREAM_VERSION);
     s << _lognr;
     f.close();
     QFile::remove("./log/last_log.dat");
@@ -262,6 +269,7 @@ void Persistance::flush_buffer()
                 QFile page_file(QString("./pages/%1").arg(page_id));
                 page_file.open(QIODevice::WriteOnly);
                 QDataStream page_stream(&page_file);
+                page_stream.setVersion(DATASTREAM_VERSION);
                 _buffer[page_id].lognr = _lognr;
                 page_stream << _buffer[page_id];
                 _buffer.remove(page_id);

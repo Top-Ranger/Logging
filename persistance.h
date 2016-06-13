@@ -59,6 +59,7 @@ private:
     static qint64 _lognr;
 
     static qint64 constexpr MAX_DATASETS = 5;
+    static QDataStream::Version constexpr DATASTREAM_VERSION = QDataStream::Qt_5_0;
 };
 
 inline QDataStream& operator <<(QDataStream &stream, Persistance::page &p)
