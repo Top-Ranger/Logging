@@ -7,6 +7,9 @@
 BenchmarkClient::BenchmarkClient()
 {
     Persistance p;
+
+    p.restore_all();
+
     QTime start = QTime::currentTime();
 
     for(int i = 0; i < 1000; ++i)

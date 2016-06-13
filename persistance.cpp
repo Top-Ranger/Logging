@@ -266,6 +266,50 @@ void Persistance::rollback(qint64 transaction_id)
     flush_buffer();
 }
 
+void Persistance::flush()
+{
+    QReadLocker l(_rwlock);
+
+    qDebug() << Q_FUNC_INFO << "Flushing all pages in buffer";
+
+    foreach (qint64 page_id, _buffer.keys())
+    {
+        QFile page_file(QString("./pages/%1").arg(page_id));
+        page_file.open(QIODevice::WriteOnly);
+        QDataStream page_stream(&page_file);
+        page_stream.setVersion(DATASTREAM_VERSION);
+        _buffer[page_id].lognr = _lognr;
+        page_stream << _buffer[page_id];
+        page_file.close();
+    }
+}
+
+void Persistance::restore_all()
+{
+    QWriteLocker l(_rwlock);
+
+    qDebug() << Q_FUNC_INFO << "Setting all known pages to last version";
+
+    QDir page_dir("./pages/");
+
+    foreach (QString page, page_dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot))
+    {
+        bool ok;
+        qint64 page_id = page.toInt(&ok);
+
+        if(ok)
+        {
+            load_dataset(page_id);
+        }
+    }
+
+    flush_buffer();
+
+    // Flush keeps its own lock - so release the write log
+    l.unlock();
+    flush();
+}
+
 void Persistance::load_dataset(qint64 page_id)
 {
     qint64 last_log = 0;

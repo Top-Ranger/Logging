@@ -53,6 +53,8 @@ public:
     void remove(qint64 transaction_id, qint64 page_id, QString key);
     void commit(qint64 transaction_id);
     void rollback(qint64 transaction_id);
+    void flush();
+    void restore_all();
 
 private:
     void load_dataset(qint64 page_id);
