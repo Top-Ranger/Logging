@@ -25,6 +25,7 @@
 #include <QDataStream>
 #include <QVariant>
 #include <QSet>
+#include <QLinkedList>
 
 class Persistance
 {
@@ -57,14 +58,16 @@ private:
     void load_dataset(qint64 page_id);
     void increase_log_number();
     void flush_buffer();
+    void update_lru(qint64 page_id);
 
     static QReadWriteLock *_rwlock;
     static QHash<qint64, page> _buffer;
     static QHash<qint64, QList<qint64> > _transactions;
     static qint64 _lognr;
     static qint64 _last_tid;
+    static QLinkedList<qint64> _lru_cache;
 
-    static qint64 constexpr MAX_DATASETS = 5;
+    static qint64 constexpr MAX_DATASETS = 10;
     static QDataStream::Version constexpr DATASTREAM_VERSION = QDataStream::Qt_5_0;
 };
 

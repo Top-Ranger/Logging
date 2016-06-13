@@ -29,6 +29,7 @@ QHash<qint64, Persistance::page> Persistance::_buffer = QHash<qint64, Persistanc
 QHash<qint64, QList<qint64> > Persistance::_transactions = QHash<qint64, QList<qint64> >();
 qint64 Persistance::_lognr = -1;
 qint64 Persistance::_last_tid = 0;
+QLinkedList<qint64> Persistance::_lru_cache = QLinkedList<qint64>();
 
 Persistance::Persistance()
 {
@@ -108,6 +109,8 @@ void Persistance::write(qint64 transaction_id, qint64 page_id, QString key, QVar
         load_dataset(page_id);
     }
 
+    update_lru(page_id);
+
     _buffer[page_id].write_buffer[transaction_id][key] = data;
     if(_buffer[page_id].delete_buffer[transaction_id].contains(key))
     {
@@ -138,6 +141,12 @@ QVariant Persistance::read(qint64 transaction_id, qint64 page_id, QString key)
         l.relock();
     }
 
+    l.unlock();
+    _rwlock->lockForWrite();
+    update_lru(page_id);
+    _rwlock->unlock();
+    l.relock();
+
     if(_buffer[page_id].delete_buffer.value(transaction_id).contains(key))
     {
         return QVariant();
@@ -165,6 +174,8 @@ void Persistance::remove(qint64 transaction_id, qint64 page_id, QString key)
     {
         load_dataset(page_id);
     }
+
+    update_lru(page_id);
 
     if(!(_buffer[page_id].data.contains(key) || _buffer[page_id].write_buffer.value(transaction_id).contains(key)))
     {
@@ -323,6 +334,7 @@ void Persistance::load_dataset(qint64 page_id)
     }
 
     _buffer[page_id] = new_page;
+    _lru_cache.append(page_id);
 }
 
 void Persistance::increase_log_number()
@@ -344,8 +356,13 @@ void Persistance::flush_buffer()
     if(_buffer.size() > MAX_DATASETS)
     {
         qDebug() << Q_FUNC_INFO << "Pages before flush:" << _buffer.size();
-        foreach(qint64 page_id, _buffer.keys())
+
+        QLinkedList<qint64> locked_pages;
+
+        while(_buffer.size() > MAX_DATASETS/2 && !_lru_cache.empty())
         {
+            qint64 page_id = _lru_cache.takeFirst();
+
             if(_buffer[page_id].write_buffer.size() == 0 && _buffer[page_id].delete_buffer.size() == 0)
             {
                 QFile page_file(QString("./pages/%1").arg(page_id));
@@ -357,7 +374,27 @@ void Persistance::flush_buffer()
                 _buffer.remove(page_id);
                 page_file.close();
             }
+            else
+            {
+                // We can not flush this page
+                locked_pages.append(page_id);
+            }
         }
+        locked_pages << _lru_cache;
+        _lru_cache = locked_pages;
         qDebug() << Q_FUNC_INFO << "Pages after flush:" << _buffer.size();
+    }
+}
+
+void Persistance::update_lru(qint64 page_id)
+{
+    for(QLinkedList<qint64>::iterator i = _lru_cache.begin(); i != _lru_cache.end(); ++i)
+    {
+        if(*i == page_id)
+        {
+            _lru_cache.erase(i);
+            _lru_cache.append(page_id);
+            return;
+        }
     }
 }
