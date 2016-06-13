@@ -28,6 +28,7 @@ QReadWriteLock *Persistance::_rwlock = new QReadWriteLock();
 QHash<qint64, Persistance::page> Persistance::_buffer = QHash<qint64, Persistance::page>();
 QHash<qint64, QList<qint64> > Persistance::_transactions = QHash<qint64, QList<qint64> >();
 qint64 Persistance::_lognr = -1;
+qint64 Persistance::_last_tid = 0;
 
 Persistance::Persistance()
 {
@@ -82,15 +83,14 @@ Persistance::Persistance()
 qint64 Persistance::beginTransaction()
 {
     QWriteLocker l(_rwlock);
-    qint64 id = 1;
     forever
     {
-        if(!_transactions.contains(id))
+        ++_last_tid;
+        if(!_transactions.contains(_last_tid))
         {
-            _transactions[id] = QList<qint64>();
-            return id;
+            _transactions[_last_tid] = QList<qint64>();
+            return _last_tid;
         }
-        ++id;
     }
 }
 

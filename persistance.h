@@ -62,6 +62,7 @@ private:
     static QHash<qint64, page> _buffer;
     static QHash<qint64, QList<qint64> > _transactions;
     static qint64 _lognr;
+    static qint64 _last_tid;
 
     static qint64 constexpr MAX_DATASETS = 5;
     static QDataStream::Version constexpr DATASTREAM_VERSION = QDataStream::Qt_5_0;
