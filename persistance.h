@@ -23,28 +23,33 @@
 #include <QHash>
 #include <QList>
 #include <QDataStream>
+#include <QVariant>
+#include <QSet>
 
 class Persistance
 {
 public:
     struct page
     {
-        QString data;
+        QHash<QString, QVariant> data;
         qint64 lognr;
-        QHash<qint64, QString> write_buffer;
+        QHash<qint64, QHash<QString, QVariant> > write_buffer;
+        QHash<qint64, QSet<QString> > delete_buffer;
 
         page() :
             data(),
             lognr(0),
-            write_buffer()
+            write_buffer(),
+            delete_buffer()
         {
         }
     };
 
     Persistance();
     qint64 beginTransaction();
-    void write(qint64 transaction_id, qint64 page_id, QString data);
-    QString read(qint64 transaction_id, qint64 page_id);
+    void write(qint64 transaction_id, qint64 page_id, QString key, QVariant data);
+    QVariant read(qint64 transaction_id, qint64 page_id, QString key);
+    void remove(qint64 transaction_id, qint64 page_id, QString key);
     void commit(qint64 transaction_id);
     void rollback(qint64 transaction_id);
 

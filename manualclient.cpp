@@ -39,10 +39,12 @@ void ManualClient::transaction_running(bool running)
     ui->transaction->setEnabled(!running);
     ui->close->setEnabled(!running);
     ui->page->setEnabled(running);
+    ui->key->setEnabled(running);
     ui->data->setEnabled(running);
     ui->read->setEnabled(running);
     ui->write->setEnabled(running);
     ui->commit->setEnabled(running);
+    ui->remove->setEnabled(running);
     ui->rollback->setEnabled(running);
 }
 
@@ -56,14 +58,21 @@ void ManualClient::on_transaction_clicked()
 void ManualClient::on_read_clicked()
 {
     qint64 page_id = ui->page->value();
-    ui->data->setText(_p.read(_tid, page_id));
+    ui->data->setText(_p.read(_tid, page_id, ui->key->text()).toString());
 }
 
 void ManualClient::on_write_clicked()
 {
     qint64 page_id = ui->page->value();
-    _p.write(_tid, page_id, ui->data->text());
+    _p.write(_tid, page_id, ui->key->text(), ui->data->text());
 }
+
+void ManualClient::on_remove_clicked()
+{
+    qint64 page_id = ui->page->value();
+    _p.remove(_tid, page_id, ui->key->text());
+}
+
 
 void ManualClient::on_commit_clicked()
 {

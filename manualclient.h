@@ -38,6 +38,7 @@ private slots:
     void on_transaction_clicked();
     void on_read_clicked();
     void on_write_clicked();
+    void on_remove_clicked();
     void on_commit_clicked();
     void on_rollback_clicked();
     void on_close_clicked();

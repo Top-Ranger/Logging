@@ -85,22 +85,26 @@ void ACRunner::run()
         }
         else
         {
-            switch(rnd() % 4)
+            switch(rnd() % 5)
             {
             case 0:
                 qDebug() << Q_FUNC_INFO << "Writing";
-                p.write(_tid, page_dist(rnd), QString("Write %1").arg(++counter));
+                p.write(_tid, page_dist(rnd), QString("%1").arg(page_dist(rnd)), QString("Write %1").arg(++counter));
                 break;
             case 1:
                 qDebug() << Q_FUNC_INFO << "Reading";
-                p.read(_tid, page_dist(rnd));
+                p.read(_tid, page_dist(rnd), QString("%1").arg(page_dist(rnd)));
                 break;
             case 2:
+                qDebug() << Q_FUNC_INFO << "Deleting";
+                p.remove(_tid, page_dist(rnd), QString("%1").arg(page_dist(rnd)));
+                break;
+            case 3:
                 qDebug() << Q_FUNC_INFO << "Comitting";
                 p.commit(_tid);
                 _tid = -1;
                 break;
-            case 3:
+            case 4:
                 qDebug() << Q_FUNC_INFO << "Rollback";
                 p.rollback(_tid);
                 _tid = -1;

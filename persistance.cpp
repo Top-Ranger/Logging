@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2016 Marcus Soll
  * This file is part of Logger.
  *
@@ -94,7 +94,7 @@ qint64 Persistance::beginTransaction()
     }
 }
 
-void Persistance::write(qint64 transaction_id, qint64 page_id, QString data)
+void Persistance::write(qint64 transaction_id, qint64 page_id, QString key, QVariant data)
 {
     QWriteLocker l(_rwlock);
     if(!_transactions.contains(transaction_id))
@@ -108,14 +108,19 @@ void Persistance::write(qint64 transaction_id, qint64 page_id, QString data)
         load_dataset(page_id);
     }
 
-    _buffer[page_id].write_buffer[transaction_id] = data;
+    _buffer[page_id].write_buffer[transaction_id][key] = data;
+    if(_buffer[page_id].delete_buffer[transaction_id].contains(key))
+    {
+        _buffer[page_id].delete_buffer[transaction_id].remove(key);
+    }
+
     if(!_transactions[transaction_id].contains(page_id))
     {
         _transactions[transaction_id].append(page_id);
     }
 }
 
-QString Persistance::read(qint64 transaction_id, qint64 page_id)
+QVariant Persistance::read(qint64 transaction_id, qint64 page_id, QString key)
 {
     QReadLocker l(_rwlock);
     if(!_transactions.contains(transaction_id))
@@ -126,15 +131,57 @@ QString Persistance::read(qint64 transaction_id, qint64 page_id)
 
     if(!_buffer.contains(page_id))
     {
+        l.unlock();
+        _rwlock->lockForWrite();
         load_dataset(page_id);
+        _rwlock->unlock();
+        l.relock();
+    }
+
+    if(_buffer[page_id].delete_buffer.value(transaction_id).contains(key))
+    {
+        return QVariant();
     }
 
     if(_buffer[page_id].write_buffer.contains(transaction_id))
     {
-        return _buffer[page_id].write_buffer[transaction_id];
+        return _buffer[page_id].write_buffer[transaction_id].value(key);
     }
 
-    return _buffer[page_id].data;
+    return _buffer[page_id].data.value(key);
+}
+
+void Persistance::remove(qint64 transaction_id, qint64 page_id, QString key)
+{
+    QWriteLocker l(_rwlock);
+
+    if(!_transactions.contains(transaction_id))
+    {
+        qWarning() << Q_FUNC_INFO << "Unknown id" << transaction_id;
+        return;
+    }
+
+    if(!_buffer.contains(page_id))
+    {
+        load_dataset(page_id);
+    }
+
+    if(!(_buffer[page_id].data.contains(key) || _buffer[page_id].write_buffer.value(transaction_id).contains(key)))
+    {
+        return;
+    }
+
+    _buffer[page_id].delete_buffer[transaction_id].insert(key);
+
+    if(_buffer[page_id].write_buffer[transaction_id].contains(key))
+    {
+        _buffer[page_id].write_buffer[transaction_id].remove(key);
+    }
+
+    if(!_transactions[transaction_id].contains(page_id))
+    {
+        _transactions[transaction_id].append(page_id);
+    }
 }
 
 void Persistance::commit(qint64 transaction_id)
@@ -163,9 +210,20 @@ void Persistance::commit(qint64 transaction_id)
 
     foreach (qint64 page_id, _transactions[transaction_id])
     {
-        _buffer[page_id].data = _buffer[page_id].write_buffer[transaction_id];
+        log_stream << _buffer[page_id].write_buffer[transaction_id];
+        log_stream << _buffer[page_id].delete_buffer[transaction_id];
+
+        foreach (QString key, _buffer[page_id].write_buffer[transaction_id].keys())
+        {
+            _buffer[page_id].data[key] = _buffer[page_id].write_buffer[transaction_id][key];
+        }
+
+        foreach (QString key, _buffer[page_id].delete_buffer[transaction_id])
+        {
+            _buffer[page_id].data.remove(key);
+        }
         _buffer[page_id].write_buffer.remove(transaction_id);
-        log_stream << _buffer[page_id];
+        _buffer[page_id].delete_buffer.remove(transaction_id);
     }
 
     log_file.close();
@@ -189,6 +247,7 @@ void Persistance::rollback(qint64 transaction_id)
     foreach (qint64 page_id, _transactions[transaction_id])
     {
         _buffer[page_id].write_buffer.remove(transaction_id);
+        _buffer[page_id].delete_buffer.remove(transaction_id);
     }
 
     _transactions.remove(transaction_id);
@@ -226,17 +285,29 @@ void Persistance::load_dataset(qint64 page_id)
             {
                 while(!s.atEnd())
                 {
-                    page current_log;
-                    s >> current_log;
+                    QHash<QString, QVariant> writes;
+                    QSet<QString> deletes;
+                    s >> writes >> deletes;
                     if(saved_pages.first() == page_id)
                     {
-                        new_page = current_log;
-                        break;
+                        foreach (QString key, writes.keys())
+                        {
+                            new_page.data[key] = writes[key];
+                        }
+
+                        foreach (QString key, deletes)
+                        {
+                            new_page.data.remove(key);
+                        }
                     }
                     saved_pages.removeFirst();
                 }
             }
             f.close();
+        }
+        else
+        {
+            qWarning() << Q_FUNC_INFO << "Missing log" << last_log;
         }
     }
 
@@ -264,7 +335,7 @@ void Persistance::flush_buffer()
         qDebug() << Q_FUNC_INFO << "Pages before flush:" << _buffer.size();
         foreach(qint64 page_id, _buffer.keys())
         {
-            if(_buffer[page_id].write_buffer.size() == 0)
+            if(_buffer[page_id].write_buffer.size() == 0 && _buffer[page_id].delete_buffer.size() == 0)
             {
                 QFile page_file(QString("./pages/%1").arg(page_id));
                 page_file.open(QIODevice::WriteOnly);
