@@ -21,6 +21,7 @@
 
 #include "automaticclient.h"
 #include "manualclient.h"
+#include "benchmarkclient.h"
 
 Logging::Logging(QWidget *parent) :
     QMainWindow(parent),
@@ -49,4 +50,9 @@ void Logging::on_manual_clicked()
 void Logging::on_pushButton_clicked()
 {
     QApplication::aboutQt();
+}
+
+void Logging::on_benchmark_clicked()
+{
+    BenchmarkClient c;
 }
