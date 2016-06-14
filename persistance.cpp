@@ -319,44 +319,51 @@ void Persistance::load_dataset(qint64 page_id)
         f.close();
         last_log = new_page.lognr;
 
-        for(; last_log < _lognr; ++last_log)
+        if(!QFile::exists(QString("./pages/%1.save").arg(page_id)))
         {
-            if(QFile::exists(QString("./log/%1").arg(last_log)))
+            for(; last_log < _lognr; ++last_log)
             {
-                QFile f(QString("./log/%1").arg(last_log));
-                f.open(QIODevice::ReadOnly);
-                QDataStream s(&f);
-                s.setVersion(DATASTREAM_VERSION);
-                QList<qint64> saved_pages;
-                s >> saved_pages;
-                if(saved_pages.contains(page_id))
+                if(QFile::exists(QString("./log/%1").arg(last_log)))
                 {
-                    while(!s.atEnd())
+                    QFile f(QString("./log/%1").arg(last_log));
+                    f.open(QIODevice::ReadOnly);
+                    QDataStream s(&f);
+                    s.setVersion(DATASTREAM_VERSION);
+                    QList<qint64> saved_pages;
+                    s >> saved_pages;
+                    if(saved_pages.contains(page_id))
                     {
-                        QHash<QString, QVariant> writes;
-                        QSet<QString> deletes;
-                        s >> writes >> deletes;
-                        if(saved_pages.first() == page_id)
+                        while(!s.atEnd())
                         {
-                            foreach (QString key, writes.keys())
+                            QHash<QString, QVariant> writes;
+                            QSet<QString> deletes;
+                            s >> writes >> deletes;
+                            if(saved_pages.first() == page_id)
                             {
-                                new_page.data[key] = writes[key];
-                            }
+                                foreach (QString key, writes.keys())
+                                {
+                                    new_page.data[key] = writes[key];
+                                }
 
-                            foreach (QString key, deletes)
-                            {
-                                new_page.data.remove(key);
+                                foreach (QString key, deletes)
+                                {
+                                    new_page.data.remove(key);
+                                }
                             }
+                            saved_pages.removeFirst();
                         }
-                        saved_pages.removeFirst();
                     }
+                    f.close();
                 }
-                f.close();
+                else
+                {
+                    qWarning() << Q_FUNC_INFO << "Missing log" << last_log;
+                }
             }
-            else
-            {
-                qWarning() << Q_FUNC_INFO << "Missing log" << last_log;
-            }
+        }
+        else
+        {
+            QFile::remove(QString("./pages/%1.save").arg(page_id));
         }
     }
     else if(QFile::exists(QString("./pages/%1.prepare").arg(page_id)))
@@ -428,6 +435,11 @@ void Persistance::flush_buffer()
             {
                 write_dataset(page_id);
                 _buffer.remove(page_id);
+
+                // Create save file
+                QFile save_file(QString("./pages/%1.save").arg(page_id));
+                save_file.open(QIODevice::WriteOnly);
+                save_file.close();
             }
             else
             {
