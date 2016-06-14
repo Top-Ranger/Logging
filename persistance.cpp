@@ -288,7 +288,7 @@ void Persistance::restore_all()
 
     foreach (QString page, page_dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot))
     {
-        if(page.endsWith(".save"))
+        if(page.endsWith(".clean"))
         {
             continue;
         }
@@ -319,7 +319,7 @@ void Persistance::vacuum_logs()
 
     foreach (QString page, page_dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot))
     {
-        if(page.endsWith(".save"))
+        if(page.endsWith(".clean"))
         {
             continue;
         }
@@ -374,7 +374,7 @@ void Persistance::load_dataset(qint64 page_id)
         f.close();
         last_log = new_page.lognr;
 
-        if(!QFile::exists(QString("./pages/%1.save").arg(page_id)))
+        if(!QFile::exists(QString("./pages/%1.clean").arg(page_id)))
         {
             for(; last_log < _lognr; ++last_log)
             {
@@ -418,7 +418,7 @@ void Persistance::load_dataset(qint64 page_id)
         }
         else
         {
-            QFile::remove(QString("./pages/%1.save").arg(page_id));
+            QFile::remove(QString("./pages/%1.clean").arg(page_id));
         }
     }
     else if(QFile::exists(QString("./pages/%1.prepare").arg(page_id)))
@@ -492,7 +492,7 @@ void Persistance::flush_buffer()
                 _buffer.remove(page_id);
 
                 // Create save file
-                QFile save_file(QString("./pages/%1.save").arg(page_id));
+                QFile save_file(QString("./pages/%1.clean").arg(page_id));
                 save_file.open(QIODevice::WriteOnly);
                 save_file.close();
             }
