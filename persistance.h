@@ -55,6 +55,7 @@ public:
     void rollback(qint64 transaction_id);
     void flush();
     void restore_all();
+    void vacuum_logs();
 
 private:
     void load_dataset(qint64 page_id);

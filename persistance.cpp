@@ -288,6 +288,11 @@ void Persistance::restore_all()
 
     foreach (QString page, page_dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot))
     {
+        if(page.endsWith(".save"))
+        {
+            continue;
+        }
+
         bool ok;
         qint64 page_id = page.toInt(&ok);
 
@@ -302,6 +307,48 @@ void Persistance::restore_all()
     // Flush keeps its own lock - so release the write log
     l.unlock();
     flush();
+}
+
+void Persistance::vacuum_logs()
+{
+    QWriteLocker l(_rwlock);
+
+    qDebug() << Q_FUNC_INFO << "Starting log vacuum";
+
+    QDir page_dir("./pages/");
+
+    foreach (QString page, page_dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot))
+    {
+        if(page.endsWith(".save"))
+        {
+            continue;
+        }
+
+        bool ok;
+        qint64 page_id = page.toInt(&ok);
+
+        if(ok)
+        {
+            load_dataset(page_id);
+        }
+    }
+
+    qint64 last_save_log = _lognr;
+
+    for(QHash<qint64, page>::iterator i = _buffer.begin(); i != _buffer.end(); ++i)
+    {
+        last_save_log = qMin(last_save_log, (*i).lognr);
+    }
+
+    qDebug() << "Removing all logs before" << last_save_log;
+
+    for(qint64 i = 0; i < last_save_log; ++i)
+    {
+        if(QFile::exists(QString("./log/%1").arg(i)))
+        {
+            QFile::remove(QString("./log/%1").arg(i));
+        }
+    }
 }
 
 void Persistance::load_dataset(qint64 page_id)
