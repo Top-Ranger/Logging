@@ -58,6 +58,7 @@ public:
 
 private:
     void load_dataset(qint64 page_id);
+    void write_dataset(qint64 page_id);
     void increase_log_number();
     void flush_buffer();
     void update_lru(qint64 page_id);

@@ -274,13 +274,7 @@ void Persistance::flush()
 
     foreach (qint64 page_id, _buffer.keys())
     {
-        QFile page_file(QString("./pages/%1").arg(page_id));
-        page_file.open(QIODevice::WriteOnly);
-        QDataStream page_stream(&page_file);
-        page_stream.setVersion(DATASTREAM_VERSION);
-        _buffer[page_id].lognr = _lognr;
-        page_stream << _buffer[page_id];
-        page_file.close();
+        write_dataset(page_id);
     }
 }
 
@@ -365,6 +359,15 @@ void Persistance::load_dataset(qint64 page_id)
             }
         }
     }
+    else if(QFile::exists(QString("./pages/%1.prepare").arg(page_id)))
+    {
+        qCritical() << "page file" << page_id << "does not exist but prepare file does! Will attempt to recover!";
+        // Just rename and load
+        QFile::rename(QString("./pages/%1.prepare").arg(page_id), QString("./pages/%1").arg(page_id));
+        QFile::remove(QString("./pages/%1.prepare").arg(page_id));
+        load_dataset(page_id);
+        return;
+    }
     else
     {
         // Directly save newly created page - this way we do not need to traverse all logs to search for lost pages
@@ -379,6 +382,20 @@ void Persistance::load_dataset(qint64 page_id)
 
     _buffer[page_id] = new_page;
     _lru_cache.append(page_id);
+}
+
+void Persistance::write_dataset(qint64 page_id)
+{
+    QFile page_file(QString("./pages/%1.prepare").arg(page_id));
+    page_file.open(QIODevice::WriteOnly);
+    QDataStream page_stream(&page_file);
+    page_stream.setVersion(DATASTREAM_VERSION);
+    _buffer[page_id].lognr = _lognr;
+    page_stream << _buffer[page_id];
+    page_file.close();
+    QFile::remove(QString("./pages/%1").arg(page_id));
+    QFile::rename(QString("./pages/%1.prepare").arg(page_id), QString("./pages/%1").arg(page_id));
+    QFile::remove(QString("./pages/%1.prepare").arg(page_id));
 }
 
 void Persistance::increase_log_number()
@@ -409,14 +426,8 @@ void Persistance::flush_buffer()
 
             if(_buffer[page_id].write_buffer.size() == 0 && _buffer[page_id].delete_buffer.size() == 0)
             {
-                QFile page_file(QString("./pages/%1").arg(page_id));
-                page_file.open(QIODevice::WriteOnly);
-                QDataStream page_stream(&page_file);
-                page_stream.setVersion(DATASTREAM_VERSION);
-                _buffer[page_id].lognr = _lognr;
-                page_stream << _buffer[page_id];
+                write_dataset(page_id);
                 _buffer.remove(page_id);
-                page_file.close();
             }
             else
             {
