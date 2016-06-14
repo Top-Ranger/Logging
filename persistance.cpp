@@ -340,7 +340,7 @@ void Persistance::vacuum_logs()
         last_save_log = qMin(last_save_log, (*i).lognr);
     }
 
-    qDebug() << "Removing all logs before" << last_save_log;
+    qDebug() << Q_FUNC_INFO << "Removing all logs before" << last_save_log;
 
     for(qint64 i = 0; i < last_save_log; ++i)
     {
@@ -349,10 +349,18 @@ void Persistance::vacuum_logs()
             QFile::remove(QString("./log/%1").arg(i));
         }
     }
+
+    flush_buffer();
 }
 
 void Persistance::load_dataset(qint64 page_id)
 {
+    if(_buffer.contains(page_id))
+    {
+        // Dataset is already loaded - skipping
+        return;
+    }
+
     qint64 last_log = 0;
     page new_page;
 

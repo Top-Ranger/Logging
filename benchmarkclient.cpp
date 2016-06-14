@@ -12,17 +12,17 @@ BenchmarkClient::BenchmarkClient()
 
     QTime start = QTime::currentTime();
 
-    for(int i = 0; i < 1000; ++i)
+    for(int i = 0; i < ROUNDS; ++i)
     {
         int tid = p.beginTransaction();
-        p.write(tid, i, "Benchmark", 1000-i);
+        p.write(tid, i, "Benchmark", ROUNDS-i);
         p.write(tid, 10000000, QString("%1").arg(i), "Benchmark");
-        p.write(tid, 10000000, QString("%1").arg(i+1000), "Benchmark");
-        p.write(tid, 10000000, QString("%1").arg(i+2000), "Benchmark");
+        p.write(tid, 10000000, QString("%1").arg(i+ROUNDS), "Benchmark");
+        p.write(tid, 10000000, QString("%1").arg(i+ROUNDS+ROUNDS), "Benchmark");
         p.commit(tid);
 
         tid = p.beginTransaction();
-        p.remove(tid, 10000000, QString("%1").arg(i+2000));
+        p.remove(tid, 10000000, QString("%1").arg(i+ROUNDS+ROUNDS));
         p.remove(tid, 1000 + qrand()%5, QString("%1").arg(qrand()%5));
         p.commit(tid);
     }
@@ -30,5 +30,5 @@ BenchmarkClient::BenchmarkClient()
 
     QMessageBox::information(0,
                              tr("Benchmark results"),
-                             QString(tr("Actions: %1\nTime: %2 s\nAverage: %3 ms / action")).arg(1000*10).arg(needed/1000).arg(needed / 1000*10));
+                             QString(tr("Actions: %1\nTime: %2 s\nAverage: %3 ms / action")).arg(ROUNDS*10).arg((double) needed/1000).arg((double) needed / (ROUNDS*10)));
 }
