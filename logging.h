@@ -38,6 +38,7 @@ private slots:
     void on_manual_clicked();
     void on_pushButton_clicked();
     void on_benchmark_clicked();
+    void on_maintenance_clicked();
 
 private:
     Ui::Logging *ui;

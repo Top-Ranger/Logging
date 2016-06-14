@@ -18,14 +18,17 @@ SOURCES += main.cpp\
     persistance.cpp \
     automaticclient.cpp \
     manualclient.cpp \
-    benchmarkclient.cpp
+    benchmarkclient.cpp \
+    maintenance.cpp
 
 HEADERS  += logging.h \
     persistance.h \
     automaticclient.h \
     manualclient.h \
-    benchmarkclient.h
+    benchmarkclient.h \
+    maintenance.h
 
 FORMS    += logging.ui \
     automaticclient.ui \
-    manualclient.ui
+    manualclient.ui \
+    maintenance.ui
