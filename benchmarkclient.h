@@ -9,7 +9,7 @@ public:
     BenchmarkClient();
 
 private:
-    static qint32 constexpr ROUNDS = 1000;
+    static qint32 constexpr ROUNDS = 10000;
 };
 
 #endif // BENCHMARKCLIENT_H

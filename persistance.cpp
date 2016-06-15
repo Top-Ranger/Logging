@@ -30,6 +30,7 @@ QHash<qint64, QList<qint64> > Persistance::_transactions = QHash<qint64, QList<q
 qint64 Persistance::_lognr = -1;
 qint64 Persistance::_last_tid = 0;
 QLinkedList<qint64> Persistance::_lru_cache = QLinkedList<qint64>();
+QLockFile Persistance::_lockfile("./.Persistance.lock");
 
 Persistance::Persistance()
 {
@@ -37,6 +38,12 @@ Persistance::Persistance()
 
     if(_lognr == -1)
     {
+        _lockfile.setStaleLockTime(0);
+        if(!_lockfile.tryLock())
+        {
+             qFatal("%s error while locking ./.lock (%i) - maybe an other instance is already running? - terminating", Q_FUNC_INFO, _lockfile.error());
+        }
+
         QDir dir("./log/");
         if(dir.exists() && QFile::exists("./log/last_log.dat"))
         {
@@ -434,12 +441,10 @@ void Persistance::load_dataset(qint64 page_id)
     {
         // Directly save newly created page - this way we do not need to traverse all logs to search for lost pages
         new_page.lognr = _lognr;
-        QFile page_file(QString("./pages/%1").arg(page_id));
-        page_file.open(QIODevice::WriteOnly);
-        QDataStream page_stream(&page_file);
-        page_stream.setVersion(DATASTREAM_VERSION);
-        page_stream << new_page;
-        page_file.close();
+        _buffer[page_id] = new_page;
+        _lru_cache.append(page_id);
+        write_dataset(page_id);
+        return;
     }
 
     _buffer[page_id] = new_page;

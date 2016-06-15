@@ -26,6 +26,7 @@
 #include <QVariant>
 #include <QSet>
 #include <QLinkedList>
+#include <QLockFile>
 
 class Persistance
 {
@@ -70,6 +71,7 @@ private:
     static qint64 _lognr;
     static qint64 _last_tid;
     static QLinkedList<qint64> _lru_cache;
+    static QLockFile _lockfile;
 
     static qint64 constexpr MAX_DATASETS = 10;
     static QDataStream::Version constexpr DATASTREAM_VERSION = QDataStream::Qt_5_0;
