@@ -24,6 +24,7 @@ The log consists of three phases:
 All paths are relative to your current paths
 * "./log/" contains all log files enumerated from 0 to the latest file. "last_log.dat" always contains the number of the latest log file.
 * "./pages/" contain the page files which were written. Even if no file exists for a page, the page might have been stored in the logs (in this case, you have to traverse through all log files in chronological order).
+* "./.Persistance.lock" is the log file ensuring only one instance is accessing the persistence cache at once.
 
 ## License
 
