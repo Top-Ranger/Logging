@@ -72,10 +72,10 @@ void ACRunner::finishWork()
 void ACRunner::run()
 {
     Persistance p;
-    qint64 counter = 0;
+    qlonglong counter = 0;
 
     std::random_device rnd;
-    std::uniform_int_distribution<qint64> page_dist(0,20);
+    std::uniform_int_distribution<qlonglong> page_dist(0,20);
 
     while(!_stop_work)
     {

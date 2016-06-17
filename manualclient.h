@@ -47,7 +47,7 @@ private:
     void transaction_running(bool running);
 
     Ui::ManualClient *ui;
-    qint64 _tid;
+    qlonglong _tid;
     Persistance _p;
 };
 

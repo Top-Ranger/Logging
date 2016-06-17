@@ -24,19 +24,21 @@
 #include <QReadLocker>
 #include <QWriteLocker>
 
+#include <limits>
+
 QReadWriteLock *Persistance::_rwlock = new QReadWriteLock();
-QHash<qint64, Persistance::page> Persistance::_buffer = QHash<qint64, Persistance::page>();
-QHash<qint64, QList<qint64> > Persistance::_transactions = QHash<qint64, QList<qint64> >();
-qint64 Persistance::_lognr = -1;
-qint64 Persistance::_last_tid = 0;
-QLinkedList<qint64> Persistance::_lru_cache = QLinkedList<qint64>();
+QHash<qlonglong, Persistance::page> Persistance::_buffer = QHash<qlonglong, Persistance::page>();
+QHash<qlonglong, QList<qlonglong> > Persistance::_transactions = QHash<qlonglong, QList<qlonglong> >();
+qulonglong Persistance::_lognr = std::numeric_limits<qlonglong>::max();
+qlonglong Persistance::_last_tid = 0;
+QLinkedList<qlonglong> Persistance::_lru_cache = QLinkedList<qlonglong>();
 QLockFile Persistance::_lockfile("./.Persistance.lock");
 
 Persistance::Persistance()
 {
     QWriteLocker l(_rwlock);
 
-    if(_lognr == -1)
+    if(_lognr == std::numeric_limits<qlonglong>::max())
     {
         _lockfile.setStaleLockTime(0);
         if(!_lockfile.tryLock())
@@ -88,7 +90,7 @@ Persistance::Persistance()
     }
 }
 
-qint64 Persistance::beginTransaction()
+qlonglong Persistance::beginTransaction()
 {
     QWriteLocker l(_rwlock);
     forever
@@ -96,13 +98,13 @@ qint64 Persistance::beginTransaction()
         ++_last_tid;
         if(!_transactions.contains(_last_tid))
         {
-            _transactions[_last_tid] = QList<qint64>();
+            _transactions[_last_tid] = QList<qlonglong>();
             return _last_tid;
         }
     }
 }
 
-void Persistance::write(qint64 transaction_id, qint64 page_id, QString key, QVariant data)
+void Persistance::write(qlonglong transaction_id, qlonglong page_id, QString key, QVariant data)
 {
     QWriteLocker l(_rwlock);
     if(!_transactions.contains(transaction_id))
@@ -130,7 +132,7 @@ void Persistance::write(qint64 transaction_id, qint64 page_id, QString key, QVar
     }
 }
 
-QVariant Persistance::read(qint64 transaction_id, qint64 page_id, QString key)
+QVariant Persistance::read(qlonglong transaction_id, qlonglong page_id, QString key)
 {
     QReadLocker l(_rwlock);
     if(!_transactions.contains(transaction_id))
@@ -167,7 +169,7 @@ QVariant Persistance::read(qint64 transaction_id, qint64 page_id, QString key)
     return _buffer[page_id].data.value(key);
 }
 
-void Persistance::remove(qint64 transaction_id, qint64 page_id, QString key)
+void Persistance::remove(qlonglong transaction_id, qlonglong page_id, QString key)
 {
     QWriteLocker l(_rwlock);
 
@@ -202,7 +204,7 @@ void Persistance::remove(qint64 transaction_id, qint64 page_id, QString key)
     }
 }
 
-void Persistance::commit(qint64 transaction_id)
+void Persistance::commit(qlonglong transaction_id)
 {
     QWriteLocker l(_rwlock);
 
@@ -226,7 +228,7 @@ void Persistance::commit(qint64 transaction_id)
     log_stream.setVersion(DATASTREAM_VERSION);
     log_stream << _transactions[transaction_id];
 
-    foreach (qint64 page_id, _transactions[transaction_id])
+    foreach (qlonglong page_id, _transactions[transaction_id])
     {
         log_stream << _buffer[page_id].write_buffer[transaction_id];
         log_stream << _buffer[page_id].delete_buffer[transaction_id];
@@ -252,7 +254,7 @@ void Persistance::commit(qint64 transaction_id)
     _transactions.remove(transaction_id);
 }
 
-void Persistance::rollback(qint64 transaction_id)
+void Persistance::rollback(qlonglong transaction_id)
 {
     QWriteLocker l(_rwlock);
 
@@ -262,7 +264,7 @@ void Persistance::rollback(qint64 transaction_id)
         return;
     }
 
-    foreach (qint64 page_id, _transactions[transaction_id])
+    foreach (qlonglong page_id, _transactions[transaction_id])
     {
         _buffer[page_id].write_buffer.remove(transaction_id);
         _buffer[page_id].delete_buffer.remove(transaction_id);
@@ -279,7 +281,7 @@ void Persistance::flush()
 
     qDebug() << Q_FUNC_INFO << "Flushing all pages in buffer";
 
-    foreach (qint64 page_id, _buffer.keys())
+    foreach (qlonglong page_id, _buffer.keys())
     {
         write_dataset(page_id);
     }
@@ -301,7 +303,7 @@ void Persistance::restore_all()
         }
 
         bool ok;
-        qint64 page_id = page.toInt(&ok);
+        qlonglong page_id = page.toLongLong(&ok);
 
         if(ok)
         {
@@ -332,7 +334,7 @@ void Persistance::vacuum_logs()
         }
 
         bool ok;
-        qint64 page_id = page.toInt(&ok);
+        qlonglong page_id = page.toLongLong(&ok);
 
         if(ok)
         {
@@ -340,16 +342,16 @@ void Persistance::vacuum_logs()
         }
     }
 
-    qint64 last_save_log = _lognr;
+    qulonglong last_save_log = _lognr;
 
-    for(QHash<qint64, page>::iterator i = _buffer.begin(); i != _buffer.end(); ++i)
+    for(QHash<qlonglong, page>::iterator i = _buffer.begin(); i != _buffer.end(); ++i)
     {
         last_save_log = qMin(last_save_log, (*i).lognr);
     }
 
     qDebug() << Q_FUNC_INFO << "Removing all logs before" << last_save_log;
 
-    for(qint64 i = 0; i < last_save_log; ++i)
+    for(qulonglong i = 0; i < last_save_log; ++i)
     {
         if(QFile::exists(QString("./log/%1").arg(i)))
         {
@@ -360,7 +362,7 @@ void Persistance::vacuum_logs()
     flush_buffer();
 }
 
-void Persistance::load_dataset(qint64 page_id)
+void Persistance::load_dataset(qlonglong page_id)
 {
     if(_buffer.contains(page_id))
     {
@@ -368,7 +370,7 @@ void Persistance::load_dataset(qint64 page_id)
         return;
     }
 
-    qint64 last_log = 0;
+    qulonglong last_log = 0;
     page new_page;
 
     if(QFile::exists(QString("./pages/%1").arg(page_id)))
@@ -391,7 +393,7 @@ void Persistance::load_dataset(qint64 page_id)
                     f.open(QIODevice::ReadOnly);
                     QDataStream s(&f);
                     s.setVersion(DATASTREAM_VERSION);
-                    QList<qint64> saved_pages;
+                    QList<qlonglong> saved_pages;
                     s >> saved_pages;
                     if(saved_pages.contains(page_id))
                     {
@@ -451,7 +453,7 @@ void Persistance::load_dataset(qint64 page_id)
     _lru_cache.append(page_id);
 }
 
-void Persistance::write_dataset(qint64 page_id)
+void Persistance::write_dataset(qlonglong page_id)
 {
     QFile page_file(QString("./pages/%1.prepare").arg(page_id));
     page_file.open(QIODevice::WriteOnly);
@@ -485,11 +487,11 @@ void Persistance::flush_buffer()
     {
         qDebug() << Q_FUNC_INFO << "Pages before flush:" << _buffer.size();
 
-        QLinkedList<qint64> locked_pages;
+        QLinkedList<qlonglong> locked_pages;
 
         while(_buffer.size() > MAX_DATASETS/2 && !_lru_cache.empty())
         {
-            qint64 page_id = _lru_cache.takeFirst();
+            qlonglong page_id = _lru_cache.takeFirst();
 
             if(_buffer[page_id].write_buffer.size() == 0 && _buffer[page_id].delete_buffer.size() == 0)
             {
@@ -513,9 +515,9 @@ void Persistance::flush_buffer()
     }
 }
 
-void Persistance::update_lru(qint64 page_id)
+void Persistance::update_lru(qlonglong page_id)
 {
-    for(QLinkedList<qint64>::iterator i = _lru_cache.begin(); i != _lru_cache.end(); ++i)
+    for(QLinkedList<qlonglong>::iterator i = _lru_cache.begin(); i != _lru_cache.end(); ++i)
     {
         if(*i == page_id)
         {

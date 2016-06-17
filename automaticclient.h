@@ -40,7 +40,7 @@ protected:
 
 private:
     bool _stop_work;
-    qint64 _tid;
+    qlonglong _tid;
 };
 
 class AutomaticClient : public QWidget

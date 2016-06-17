@@ -26,7 +26,7 @@ BenchmarkClient::BenchmarkClient()
         p.remove(tid, 1000 + qrand()%5, QString("%1").arg(qrand()%5));
         p.commit(tid);
     }
-    qint64 needed = start.msecsTo(QTime::currentTime());
+    qlonglong needed = start.msecsTo(QTime::currentTime());
 
     QMessageBox::information(0,
                              tr("Benchmark results"),

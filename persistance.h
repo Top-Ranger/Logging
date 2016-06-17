@@ -34,9 +34,9 @@ public:
     struct page
     {
         QHash<QString, QVariant> data;
-        qint64 lognr;
-        QHash<qint64, QHash<QString, QVariant> > write_buffer;
-        QHash<qint64, QSet<QString> > delete_buffer;
+        qulonglong lognr;
+        QHash<qlonglong, QHash<QString, QVariant> > write_buffer;
+        QHash<qlonglong, QSet<QString> > delete_buffer;
 
         page() :
             data(),
@@ -48,32 +48,32 @@ public:
     };
 
     Persistance();
-    qint64 beginTransaction();
-    void write(qint64 transaction_id, qint64 page_id, QString key, QVariant data);
-    QVariant read(qint64 transaction_id, qint64 page_id, QString key);
-    void remove(qint64 transaction_id, qint64 page_id, QString key);
-    void commit(qint64 transaction_id);
-    void rollback(qint64 transaction_id);
+    qlonglong beginTransaction();
+    void write(qlonglong transaction_id, qlonglong page_id, QString key, QVariant data);
+    QVariant read(qlonglong transaction_id, qlonglong page_id, QString key);
+    void remove(qlonglong transaction_id, qlonglong page_id, QString key);
+    void commit(qlonglong transaction_id);
+    void rollback(qlonglong transaction_id);
     void flush();
     void restore_all();
     void vacuum_logs();
 
 private:
-    void load_dataset(qint64 page_id);
-    void write_dataset(qint64 page_id);
+    void load_dataset(qlonglong page_id);
+    void write_dataset(qlonglong page_id);
     void increase_log_number();
     void flush_buffer();
-    void update_lru(qint64 page_id);
+    void update_lru(qlonglong page_id);
 
     static QReadWriteLock *_rwlock;
-    static QHash<qint64, page> _buffer;
-    static QHash<qint64, QList<qint64> > _transactions;
-    static qint64 _lognr;
-    static qint64 _last_tid;
-    static QLinkedList<qint64> _lru_cache;
+    static QHash<qlonglong, page> _buffer;
+    static QHash<qlonglong, QList<qlonglong> > _transactions;
+    static qulonglong _lognr;
+    static qlonglong _last_tid;
+    static QLinkedList<qlonglong> _lru_cache;
     static QLockFile _lockfile;
 
-    static qint64 constexpr MAX_DATASETS = 10;
+    static qlonglong constexpr MAX_DATASETS = 10;
     static QDataStream::Version constexpr DATASTREAM_VERSION = QDataStream::Qt_5_0;
 };
 
