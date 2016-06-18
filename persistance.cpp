@@ -307,11 +307,18 @@ void Persistance::restore_all()
 
         if(ok)
         {
-            load_dataset(page_id);
+            if(!_buffer.contains(page_id))
+            {
+                load_dataset(page_id);
+                write_dataset(page_id);
+                _buffer.remove(page_id);
+                _lru_cache.removeLast();
+                QFile save_file(QString("./pages/%1.clean").arg(page_id));
+                save_file.open(QIODevice::WriteOnly);
+                save_file.close();
+            }
         }
     }
-
-    flush_buffer();
 
     // Flush keeps its own lock - so release the write log
     l.unlock();
@@ -325,6 +332,7 @@ void Persistance::vacuum_logs()
     qDebug() << Q_FUNC_INFO << "Starting log vacuum";
 
     QDir page_dir("./pages/");
+    qulonglong last_save_log = _lognr;
 
     foreach (QString page, page_dir.entryList(QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot))
     {
@@ -338,15 +346,22 @@ void Persistance::vacuum_logs()
 
         if(ok)
         {
-            load_dataset(page_id);
+            if(_buffer.contains(page_id))
+            {
+                last_save_log = qMin(last_save_log, _buffer[page_id].lognr);
+            }
+            else
+            {
+                load_dataset(page_id);
+                write_dataset(page_id);
+                last_save_log = qMin(last_save_log, _buffer[page_id].lognr);
+                _buffer.remove(page_id);
+                _lru_cache.removeLast();
+                QFile save_file(QString("./pages/%1.clean").arg(page_id));
+                save_file.open(QIODevice::WriteOnly);
+                save_file.close();
+            }
         }
-    }
-
-    qulonglong last_save_log = _lognr;
-
-    for(QHash<qlonglong, page>::iterator i = _buffer.begin(); i != _buffer.end(); ++i)
-    {
-        last_save_log = qMin(last_save_log, (*i).lognr);
     }
 
     qDebug() << Q_FUNC_INFO << "Removing all logs before" << last_save_log;
@@ -358,8 +373,6 @@ void Persistance::vacuum_logs()
             QFile::remove(QString("./log/%1").arg(i));
         }
     }
-
-    flush_buffer();
 }
 
 void Persistance::load_dataset(qlonglong page_id)
