@@ -307,7 +307,8 @@ void Persistance::restore_all()
 
         if(ok)
         {
-            if(!_buffer.contains(page_id))
+            // No need to restore clean pages
+            if(!_buffer.contains(page_id) && !QFile::exists(QString("./pages/%1.clean").arg(page_id)))
             {
                 load_dataset(page_id);
                 write_dataset(page_id);
